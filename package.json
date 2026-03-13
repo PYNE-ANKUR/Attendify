@@ -1,0 +1,15 @@
+{
+  "name": "attendx",
+  "version": "1.0.0",
+  "description": "Smart Bluetooth + Firebase attendance system",
+  "scripts": {
+    "deploy": "firebase deploy",
+    "deploy:hosting": "firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:indexes": "firebase deploy --only firestore:indexes"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "firebase-tools": "^13.0.0"
+  }
+}

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendX — Smart Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div id="app">
+
+<!-- LANDING -->
+<div id="landing" class="screen active">
+  <div class="brand">
+    <div class="brand-icon">📡</div>
+    <div class="brand-name">AttendX</div>
+  </div>
+  <h1 class="hero">Smart<br><span>Bluetooth</span><br>Attendance</h1>
+  <p class="hero-sub">Real-time cross-device attendance. Bluetooth for proximity detection, Firebase for global sync. Works anywhere.</p>
+  <div id="fb-status" style="margin-bottom:24px;max-width:460px"></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="goAuth('teacher')">
+      <span class="role-badge rb-t">TEACHER</span>
+      <div class="rc-icon">🎓</div>
+      <div class="rc-name">Educator</div>
+      <div class="rc-desc">Create sessions, broadcast PINs, view live attendance from any device worldwide.</div>
+    </div>
+    <div class="role-card" onclick="goAuth('student')">
+      <span class="role-badge rb-s">STUDENT</span>
+      <div class="rc-icon">🎒</div>
+      <div class="rc-name">Student</div>
+      <div class="rc-desc">Enter PIN or scan via Bluetooth. Attendance syncs to Firebase instantly.</div>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH -->
+<div id="auth" class="screen">
+  <div class="auth-box">
+    <div class="auth-top">
+      <button class="back-btn" onclick="goLanding()">←</button>
+      <div>
+        <div class="auth-title" id="auth-title">Teacher Login</div>
+        <div class="auth-sub" id="auth-sub">Sign in or create account</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Full Name</label>
+      <input id="a-name" type="text" placeholder="e.g. Dr. Sharma" />
+    </div>
+    <div class="field" id="f-class" style="display:none">
+      <label>Subject / Class</label>
+      <input id="a-class" type="text" placeholder="e.g. CS201 – Data Structures" />
+    </div>
+    <div class="field" id="f-roll" style="display:none">
+      <label>Roll Number</label>
+      <input id="a-roll" type="text" placeholder="e.g. 2024CS042" />
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input id="a-email" type="email" placeholder="you@example.com" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="a-pass" type="password" placeholder="Min 6 characters" onkeydown="if(event.key==='Enter')doLogin()" />
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Sign In / Register →</button>
+    <div style="font-size:11px;color:var(--mut);text-align:center;margin-top:14px">
+      New here? Entering your email + password auto-creates your account.
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER DASHBOARD -->
+<div id="teacher-dashboard" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">📡 AttendX</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="user-pill">
+        <div class="avatar av-t" id="t-av">T</div>
+        <span id="t-name">Teacher</span>
+      </div>
+      <button class="logout-btn" onclick="logout()">logout</button>
+    </div>
+  </div>
+  <div class="dash-body">
+    <div class="tabs">
+      <button class="tab active" id="tab-btn-live" onclick="switchTab('live')">⚡ Live Session</button>
+      <button class="tab" id="tab-btn-history" onclick="switchTab('history')">🗓 Past Sessions</button>
+    </div>
+
+    <!-- LIVE TAB -->
+    <div id="tab-live">
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-val" id="s-present">0</div>
+          <div class="stat-lbl">PRESENT</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="s-status">—</div>
+          <div class="stat-lbl">STATUS</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="s-dur">—</div>
+          <div class="stat-lbl">DURATION</div>
+        </div>
+      </div>
+
+      <div class="bt-panel">
+        <div class="bt-head">
+          <div class="bt-icon-wrap">🔵
+            <div class="bt-ring" id="bt-ring" style="display:none"></div>
+          </div>
+          <div>
+            <div class="bt-title">Session Control</div>
+            <div id="t-bt-sub" style="font-size:12px;color:var(--mut);margin-top:3px">
+              <span class="sdot sdot-off"></span>No active session
+            </div>
+          </div>
+        </div>
+        <div class="info-box">
+          <b>Cross-device:</b> PIN is stored in Firebase — students on <b>any device anywhere</b> can mark attendance.
+          <b>Bluetooth</b> auto-fills the PIN for nearby Chrome users.
+          All data updates in <b>real-time</b> on your screen.
+        </div>
+        <div id="t-create">
+          <button class="btn btn-primary" onclick="startSession()">⚡ Start Attendance Session</button>
+        </div>
+        <div id="t-active" style="display:none">
+          <div class="code-box">
+            <div class="code-lbl">📲 Session PIN — share with students</div>
+            <div class="code-val" id="t-code">----</div>
+            <div class="code-exp">Expires in <span id="t-cd">10:00</span> &nbsp;·&nbsp; ID: <span id="t-sid" style="color:var(--acc)"></span></div>
+          </div>
+          <div class="wave">
+            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+            <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          </div>
+          <p style="text-align:center;font-size:12px;color:var(--mut);margin-bottom:16px">🔥 Listening for students via Firebase real-time sync…</p>
+          <button class="btn btn-danger" onclick="endSession()">⏹ End Session</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="list-header">
+          <div class="list-title">Live Attendance <span id="live-count" style="font-size:14px;color:var(--mut)"></span></div>
+          <button class="sm-btn" onclick="exportCSV()">⬇ Export CSV</button>
+        </div>
+        <div class="att-list" id="att-list">
+          <div class="empty"><div class="empty-ic">📋</div><p>Start a session to begin tracking.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="tab-history" style="display:none">
+      <div class="list-header">
+        <div class="list-title">Past Sessions</div>
+        <button class="sm-btn" onclick="loadHistory()">↻ Refresh</button>
+      </div>
+      <div id="history-content">
+        <div class="empty"><div class="empty-ic">🗓</div><p>No past sessions yet.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT DASHBOARD -->
+<div id="student-dashboard" class="screen">
+  <div class="topbar">
+    <div class="topbar-brand">📡 AttendX</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="user-pill">
+        <div class="avatar av-s" id="s-av">S</div>
+        <span id="s-name">Student</span>
+      </div>
+      <button class="logout-btn" onclick="logout()">logout</button>
+    </div>
+  </div>
+  <div class="stu-body">
+    <div id="stu-main">
+      <div class="mark-card">
+        <div class="radar"><div class="radar-inner">🔵</div></div>
+        <div class="mk-title">Mark Your Attendance</div>
+        <div class="mk-sub">Enter the PIN from your teacher. Works from any device, anywhere in the world.</div>
+        <div class="bt-bar">
+          <div style="font-size:11px;color:var(--mut);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px">Bluetooth Auto-fill (Chrome only, optional)</div>
+          <div id="stu-bt-status"><span class="sdot sdot-off"></span>Not scanning</div>
+          <div class="wave" id="stu-wave" style="display:none">
+            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+            <div class="wb"></div><div class="wb"></div><div class="wb"></div><div class="wb"></div>
+          </div>
+          <div class="devices-list" id="devices-list"></div>
+        </div>
+        <div class="pin-section">
+          <label>4-Digit Session PIN</label>
+          <div class="pin-row">
+            <input class="pin-d" id="p1" maxlength="1" inputmode="numeric" oninput="pm(this,'p2')" />
+            <input class="pin-d" id="p2" maxlength="1" inputmode="numeric" oninput="pm(this,'p3')" onkeydown="pb(event,'p1')" />
+            <input class="pin-d" id="p3" maxlength="1" inputmode="numeric" oninput="pm(this,'p4')" onkeydown="pb(event,'p2')" />
+            <input class="pin-d" id="p4" maxlength="1" inputmode="numeric" onkeydown="pb(event,'p3')" />
+          </div>
+        </div>
+        <button class="btn btn-success" id="mark-btn" onclick="markAttendance()">✅ Mark Attendance</button>
+        <button class="btn btn-outline" style="margin-top:10px" onclick="scanBluetooth()">🔵 Auto-fill via Bluetooth</button>
+      </div>
+      <div class="hist-card">
+        <div class="hist-title">My Attendance History</div>
+        <div id="hist-list"><div style="color:var(--mut);font-size:13px;text-align:center;padding:20px">Loading…</div></div>
+      </div>
+    </div>
+    <div id="success-panel">
+      <div class="tick">✓</div>
+      <div class="suc-title">Attendance Marked!</div>
+      <div class="suc-sub" id="suc-detail">You're marked present.</div>
+      <button class="btn btn-outline" style="max-width:240px;margin-top:32px" onclick="resetStu()">← Back</button>
+    </div>
+  </div>
+</div>
+
+</div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

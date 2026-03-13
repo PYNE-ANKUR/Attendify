@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read/write their own profile
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Students can write their own attendance history
+      match /attendance/{docId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Sessions
+    match /sessions/{sessionId} {
+      // Any authenticated user can read active sessions (to look up by PIN)
+      allow read: if request.auth != null;
+
+      // Only the teacher who owns it can create/update/delete
+      allow create: if request.auth != null
+        && request.resource.data.teacherUid == request.auth.uid;
+
+      allow update: if request.auth != null
+        && (resource.data.teacherUid == request.auth.uid
+            || isMarkingAttendance(request));
+
+      allow delete: if request.auth != null
+        && resource.data.teacherUid == request.auth.uid;
+
+      // Attendance subcollection
+      match /attendance/{studentUid} {
+        // Any authenticated user can write their own attendance record
+        allow create: if request.auth != null
+          && request.auth.uid == studentUid;
+
+        // Students can read their own; teachers can read all
+        allow read: if request.auth != null;
+
+        // No updates/deletes by students
+        allow update, delete: if request.auth != null
+          && get(/databases/$(database)/documents/sessions/$(sessionId)).data.teacherUid == request.auth.uid;
+      }
+    }
+  }
+
+  function isMarkingAttendance(req) {
+    // Allow students to increment the attendanceCount field only
+    return req.resource.data.diff(resource.data).affectedKeys()
+      .hasOnly(['attendanceCount']);
+  }
+}
