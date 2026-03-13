@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendX — Smart Attendance</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --border: #2a2a3a;
+    --accent: #6c63ff;
+    --accent2: #00e5cc;
+    --accent3: #ff6b6b;
+    --text: #e8e8f0;
+    --muted: #7a7a9a;
+    --success: #00e5cc;
+    --warning: #ffb347;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .orb1 { width: 500px; height: 500px; background: rgba(108,99,255,0.12); top: -100px; right: -100px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(0,229,204,0.07); bottom: -100px; left: -100px; }
+
+  #app { position: relative; z-index: 1; }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ===== LANDING ===== */
+  #landing {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .logo-mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #fff 40%, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: clamp(36px, 7vw, 72px);
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 20px;
+  }
+
+  .hero-title span {
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-sub {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 400px;
+    line-height: 1.7;
+    margin: 0 auto 48px;
+  }
+
+  .role-cards {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .role-card {
+    width: 200px;
+    padding: 28px 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .role-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .role-card:hover::before { opacity: 0.08; }
+  .role-card:hover { border-color: var(--accent); transform: translateY(-4px); box-shadow: 0 20px 40px rgba(108,99,255,0.2); }
+
+  .role-card .icon { font-size: 36px; margin-bottom: 16px; }
+  .role-card .role-name {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+  .role-card .role-desc { color: var(--muted); font-size: 12px; line-height: 1.6; }
+
+  .badge {
+    position: absolute;
+    top: 12px; right: 12px;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .badge-teacher { background: rgba(108,99,255,0.2); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
+  .badge-student { background: rgba(0,229,204,0.15); color: var(--accent2); border: 1px solid rgba(0,229,204,0.25); }
+
+  /* ===== AUTH ===== */
+  #auth {
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .auth-box {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 40px;
+  }
+
+  .auth-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .back-btn {
+    width: 36px; height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: 14px;
+    transition: all 0.2s;
+    color: var(--text);
+  }
+  .back-btn:hover { background: var(--border); }
+
+  .auth-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+  }
+
+  .field {
+    margin-bottom: 20px;
+  }
+
+  label {
+    display: block;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  .btn {
+    width: 100%;
+    padding: 16px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #8b7fff);
+    color: white;
+    box-shadow: 0 8px 24px rgba(108,99,255,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(108,99,255,0.4); }
+
+  .btn-secondary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+  .btn-secondary:hover { border-color: var(--accent); }
+
+  .btn-success {
+    background: linear-gradient(135deg, var(--accent2), #00c4ae);
+    color: #0a0a0f;
+    box-shadow: 0 8px 24px rgba(0,229,204,0.25);
+  }
+  .btn-success:hover { transform: translateY(-2px); }
+
+  .btn-danger {
+    background: linear-gradient(135deg, var(--accent3), #ff4757);
+    color: white;
+    box-shadow: 0 8px 24px rgba(255,107,107,0.25);
+  }
+
+  /* ===== TEACHER DASHBOARD ===== */
+  #teacher-dashboard {
+    padding: 0;
+  }
+
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(18,18,26,0.8);
+    backdrop-filter: blur(20px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .topbar-logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    background: linear-gradient(135deg, #fff, var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 40px;
+    padding: 8px 16px 8px 8px;
+    font-size: 13px;
+  }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Syne', sans-serif;
+  }
+  .avatar-teacher { background: linear-gradient(135deg, var(--accent), #8b7fff); }
+  .avatar-student { background: linear-gradient(135deg, var(--accent2), #00c4ae); color: #0a0a0f; }
+
+  .dashboard-body { padding: 32px; }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+  }
+
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .stat-val {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .stat-label { color: var(--muted); font-size: 12px; margin-top: 4px; letter-spacing: 0.5px; }
+
+  /* BT Session Panel */
+  .bt-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 32px;
+  }
+
+  .bt-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  .bt-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    background: rgba(108,99,255,0.15);
+    border: 1px solid rgba(108,99,255,0.3);
+    position: relative;
+  }
+
+  .bt-pulse {
+    position: absolute;
+    inset: -4px;
+    border-radius: 18px;
+    border: 2px solid var(--accent);
+    opacity: 0;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% { transform: scale(1); opacity: 0.6; }
+    100% { transform: scale(1.3); opacity: 0; }
+  }
+
+  .session-code-display {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 24px;
+    text-align: center;
+    margin: 16px 0;
+  }
+
+  .code-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 8px; }
+  .code-value {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 48px;
+    letter-spacing: 12px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+  }
+  .dot-active { background: var(--success); box-shadow: 0 0 8px var(--success); animation: blink 1.5s infinite; }
+  .dot-inactive { background: var(--muted); }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Student List */
+  .student-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .student-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .student-info { flex: 1; }
+  .student-name { font-family: 'Syne', sans-serif; font-weight: 600; font-size: 15px; }
+  .student-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .time-badge {
+    font-size: 11px;
+    padding: 4px 10px;
+    background: rgba(0,229,204,0.1);
+    color: var(--accent2);
+    border: 1px solid rgba(0,229,204,0.2);
+    border-radius: 20px;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+  .empty-state .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ===== STUDENT DASHBOARD ===== */
+  #student-dashboard {
+    align-items: stretch;
+  }
+
+  .student-body { padding: 32px; flex: 1; }
+
+  .mark-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 32px;
+    margin-bottom: 24px;
+    text-align: center;
+  }
+
+  .scan-ring {
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    border: 3px solid var(--border);
+    display: grid;
+    place-items: center;
+    margin: 0 auto 24px;
+    position: relative;
+  }
+
+  .scan-ring::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    border-top-color: var(--accent);
+    border-right-color: var(--accent2);
+    animation: spin 3s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .scan-inner {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(108,99,255,0.2), rgba(0,229,204,0.1));
+    display: grid;
+    place-items: center;
+    font-size: 48px;
+  }
+
+  .mark-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 20px;
+    margin-bottom: 8px;
+  }
+  .mark-sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; line-height: 1.6; }
+
+  .pin-input-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin: 20px 0;
+  }
+
+  .pin-digit {
+    width: 56px; height: 64px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    text-align: center;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .pin-digit:focus { border-color: var(--accent); }
+
+  /* Success Tick */
+  .success-overlay {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .tick-circle {
+    width: 100px; height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), #00c4ae);
+    display: grid;
+    place-items: center;
+    font-size: 48px;
+    margin-bottom: 24px;
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .success-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    margin-bottom: 8px;
+  }
+  .success-sub { color: var(--muted); font-size: 14px; }
+
+  /* BT Scan Animation */
+  .bt-scan-area {
+    background: var(--surface2);
+    border: 1px dashed var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    margin: 16px 0;
+  }
+
+  .scanning-wave {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 12px 0;
+  }
+
+  .wave-bar {
+    width: 4px;
+    border-radius: 4px;
+    background: var(--accent);
+    animation: wave 1.2s ease-in-out infinite;
+  }
+  .wave-bar:nth-child(1) { height: 16px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 28px; animation-delay: 0.1s; }
+  .wave-bar:nth-child(3) { height: 20px; animation-delay: 0.2s; }
+  .wave-bar:nth-child(4) { height: 32px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(5) { height: 20px; animation-delay: 0.4s; }
+  .wave-bar:nth-child(6) { height: 28px; animation-delay: 0.5s; }
+  .wave-bar:nth-child(7) { height: 16px; animation-delay: 0.6s; }
+
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
+    50% { transform: scaleY(1); opacity: 1; }
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 24px;
+    font-size: 14px;
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: rgba(0,229,204,0.4); color: var(--accent2); }
+  .toast.error { border-color: rgba(255,107,107,0.4); color: var(--accent3); }
+
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+  .chip-active { background: rgba(0,229,204,0.1); color: var(--accent2); border: 1px solid rgba(0,229,204,0.2); }
+  .chip-inactive { background: rgba(122,122,154,0.1); color: var(--muted); border: 1px solid var(--border); }
+
+  .session-info-bar {
+    background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(0,229,204,0.05));
+    border: 1px solid rgba(108,99,255,0.2);
+    border-radius: 14px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+
+  .logout-link {
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: 'DM Mono', monospace;
+    padding: 0;
+    transition: color 0.2s;
+  }
+  .logout-link:hover { color: var(--accent3); }
+
+  @media (max-width: 600px) {
+    .dashboard-body, .student-body { padding: 20px; }
+    .topbar { padding: 16px 20px; }
+    .code-value { font-size: 36px; letter-spacing: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="glow-orb orb1"></div>
+<div class="glow-orb orb2"></div>
+<div id="app">
+
+  <!-- LANDING -->
+  <div id="landing" class="screen active">
+    <div class="logo-mark">
+      <div class="logo-icon">📡</div>
+      <div class="logo-text">AttendX</div>
+    </div>
+    <h1 class="hero-title">Smart<br><span>Attendance</span><br>System</h1>
+    <p class="hero-sub">Bluetooth-powered attendance that works even when internet doesn't. No signal, no problem.</p>
+    <div class="role-cards">
+      <div class="role-card" onclick="goAuth('teacher')">
+        <span class="badge badge-teacher">TEACHER</span>
+        <div class="icon">🎓</div>
+        <div class="role-name">Educator</div>
+        <div class="role-desc">Start sessions, broadcast codes & view live attendance</div>
+      </div>
+      <div class="role-card" onclick="goAuth('student')">
+        <span class="badge badge-student">STUDENT</span>
+        <div class="icon">🎒</div>
+        <div class="role-name">Student</div>
+        <div class="role-desc">Connect via Bluetooth & mark your attendance securely</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUTH -->
+  <div id="auth" class="screen">
+    <div class="auth-box">
+      <div class="auth-header">
+        <button class="back-btn" onclick="goLanding()">←</button>
+        <div>
+          <div class="auth-title" id="auth-title">Teacher Login</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="auth-sub">Access your classroom dashboard</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="auth-name" placeholder="e.g. Dr. Sharma" />
+      </div>
+      <div class="field" id="auth-class-field" style="display:none">
+        <label>Class / Subject</label>
+        <input type="text" id="auth-class" placeholder="e.g. CS101 – Data Structures" />
+      </div>
+      <div class="field" id="auth-rollno-field" style="display:none">
+        <label>Roll Number</label>
+        <input type="text" id="auth-rollno" placeholder="e.g. 2024CS042" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="auth-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">Enter Classroom →</button>
+    </div>
+  </div>
+
+  <!-- TEACHER DASHBOARD -->
+  <div id="teacher-dashboard" class="screen">
+    <div class="topbar">
+      <div class="topbar-logo">📡 AttendX</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="user-chip">
+          <div class="avatar avatar-teacher" id="teacher-avatar">T</div>
+          <span id="teacher-name-display">Teacher</span>
+        </div>
+        <button class="logout-link" onclick="logout()">logout</button>
+      </div>
+    </div>
+    <div class="dashboard-body">
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-present">0</div>
+          <div class="stat-label">PRESENT TODAY</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-session">—</div>
+          <div class="stat-label">SESSION STATUS</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-time">—</div>
+          <div class="stat-label">SESSION DURATION</div>
+        </div>
+      </div>
+
+      <!-- BT Session -->
+      <div class="bt-panel">
+        <div class="bt-header">
+          <div class="bt-icon">
+            🔵
+            <div class="bt-pulse" id="bt-pulse" style="display:none"></div>
+          </div>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px">Bluetooth Session</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px" id="session-status-text">
+              <span class="status-dot dot-inactive"></span>No active session
+            </div>
+          </div>
+        </div>
+
+        <div id="session-create-panel">
+          <p style="color:var(--muted);font-size:13px;margin-bottom:16px">Start a session to generate a 4-digit PIN. Students connect via Bluetooth and enter the PIN to mark attendance.</p>
+          <button class="btn btn-primary" onclick="startSession()">⚡ Start Attendance Session</button>
+        </div>
+
+        <div id="session-active-panel" style="display:none">
+          <div class="session-code-display">
+            <div class="code-label">📲 Share this PIN with students</div>
+            <div class="code-value" id="session-code-display">----</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:8px">Valid for <span id="session-countdown">10:00</span></div>
+          </div>
+          <div class="scanning-wave">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div>
+          </div>
+          <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:16px">Listening for Bluetooth connections…</div>
+          <button class="btn btn-danger" onclick="endSession()">⏹ End Session</button>
+        </div>
+      </div>
+
+      <!-- Attendance List -->
+      <div>
+        <div class="section-header">
+          <div class="section-title">Attendance Register</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn btn-secondary" style="width:auto;padding:8px 16px;font-size:12px;margin-top:0" onclick="exportCSV()">⬇ Export CSV</button>
+          </div>
+        </div>
+        <div id="student-list" class="student-list">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <p>No students have marked attendance yet.</p>
+            <p style="margin-top:8px">Start a session to begin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STUDENT DASHBOARD -->
+  <div id="student-dashboard" class="screen">
+    <div class="topbar">
+      <div class="topbar-logo">📡 AttendX</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="user-chip">
+          <div class="avatar avatar-student" id="student-avatar-disp">S</div>
+          <span id="student-name-disp">Student</span>
+        </div>
+        <button class="logout-link" onclick="logout()">logout</button>
+      </div>
+    </div>
+    <div class="student-body">
+      <div id="student-mark-panel">
+        <div class="mark-card">
+          <div class="scan-ring">
+            <div class="scan-inner">🔵</div>
+          </div>
+          <div class="mark-title">Mark Your Attendance</div>
+          <div class="mark-sub">Enter the 4-digit PIN shared by your teacher.<br>Make sure Bluetooth is enabled on your device.</div>
+
+          <div class="bt-scan-area" id="bt-scan-area">
+            <div style="font-size:12px;color:var(--muted);letter-spacing:1px;margin-bottom:8px">BLUETOOTH STATUS</div>
+            <div id="bt-status-student">
+              <span class="status-dot dot-inactive"></span>
+              <span style="font-size:13px">Not scanning</span>
+            </div>
+            <div class="scanning-wave" id="bt-waves" style="display:none">
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+              <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+              <div class="wave-bar"></div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>4-Digit Session PIN</label>
+            <div class="pin-input-row">
+              <input type="text" class="pin-digit" id="pin1" maxlength="1" inputmode="numeric" oninput="pinMove(this,'pin2')" />
+              <input type="text" class="pin-digit" id="pin2" maxlength="1" inputmode="numeric" oninput="pinMove(this,'pin3')" onkeydown="pinBack(event,'pin1')" />
+              <input type="text" class="pin-digit" id="pin3" maxlength="1" inputmode="numeric" oninput="pinMove(this,'pin4')" onkeydown="pinBack(event,'pin2')" />
+              <input type="text" class="pin-digit" id="pin4" maxlength="1" inputmode="numeric" oninput="pinDone()" onkeydown="pinBack(event,'pin3')" />
+            </div>
+          </div>
+
+          <button class="btn btn-success" onclick="markAttendance()">✅ Mark Attendance</button>
+          <button class="btn btn-secondary" style="margin-top:8px" onclick="scanBluetooth()">🔵 Scan for Classroom</button>
+        </div>
+
+        <div id="my-history" style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:17px;margin-bottom:16px">My Attendance History</div>
+          <div id="history-list">
+            <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No attendance records yet.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div id="success-panel" class="success-overlay">
+        <div class="tick-circle">✓</div>
+        <div class="success-title">Attendance Marked!</div>
+        <div class="success-sub" id="success-detail">You've been marked present for today's session.</div>
+        <button class="btn btn-secondary" style="max-width:240px;margin-top:32px" onclick="resetStudentPanel()">← Back to Dashboard</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+let state = {
+  role: null,
+  user: { name: '', rollNo: '', className: '' },
+  session: { active: false, code: null, startTime: null, timer: null, countdown: null },
+  attendance: [], // [{name, rollNo, time, className}]
+  myHistory: []
+};
+
+// Simulated shared "network" via localStorage (works offline / BT simulation)
+function sharedGet(key) {
+  try { return JSON.parse(localStorage.getItem('attendx_' + key)); } catch(e) { return null; }
+}
+function sharedSet(key, val) {
+  localStorage.setItem('attendx_' + key, JSON.stringify(val));
+}
+
+// ===== NAVIGATION =====
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goAuth(role) {
+  state.role = role;
+  document.getElementById('auth-title').textContent = role === 'teacher' ? 'Teacher Login' : 'Student Login';
+  document.getElementById('auth-sub').textContent = role === 'teacher' ? 'Access your classroom dashboard' : 'Connect and mark your attendance';
+  document.getElementById('auth-class-field').style.display = role === 'teacher' ? 'block' : 'none';
+  document.getElementById('auth-rollno-field').style.display = role === 'student' ? 'block' : 'none';
+  document.getElementById('auth-name').value = '';
+  document.getElementById('auth-password').value = '';
+  showScreen('auth');
+}
+
+function goLanding() { showScreen('landing'); }
+
+function doLogin() {
+  const name = document.getElementById('auth-name').value.trim();
+  const pass = document.getElementById('auth-password').value.trim();
+  if (!name) { showToast('Please enter your name', 'error'); return; }
+  if (!pass) { showToast('Please enter a password', 'error'); return; }
+
+  state.user.name = name;
+
+  if (state.role === 'teacher') {
+    const cls = document.getElementById('auth-class').value.trim() || 'My Class';
+    state.user.className = cls;
+    document.getElementById('teacher-name-display').textContent = name;
+    document.getElementById('teacher-avatar').textContent = name[0].toUpperCase();
+    // Load saved attendance
+    state.attendance = sharedGet('attendance') || [];
+    renderAttendanceList();
+    updateStats();
+    // Check if session was active
+    const savedSession = sharedGet('session');
+    if (savedSession && savedSession.active) {
+      restoreSession(savedSession);
+    }
+    showScreen('teacher-dashboard');
+    showToast('Welcome back, ' + name + '! 👋', 'success');
+  } else {
+    const roll = document.getElementById('auth-rollno').value.trim() || 'N/A';
+    state.user.rollNo = roll;
+    document.getElementById('student-name-disp').textContent = name;
+    document.getElementById('student-avatar-disp').textContent = name[0].toUpperCase();
+    state.myHistory = sharedGet('history_' + roll) || [];
+    renderHistory();
+    showScreen('student-dashboard');
+    showToast('Welcome, ' + name + '! 📚', 'success');
+  }
+}
+
+function logout() {
+  if (state.session.active) endSession();
+  state.role = null;
+  state.user = { name: '', rollNo: '', className: '' };
+  showScreen('landing');
+}
+
+// ===== TEACHER: SESSION =====
+function generatePIN() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+function startSession() {
+  const code = generatePIN();
+  state.session = { active: true, code, startTime: Date.now(), timer: null, countdown: null };
+  sharedSet('session', { active: true, code, teacher: state.user.name, className: state.user.className });
+
+  document.getElementById('session-code-display').textContent = code;
+  document.getElementById('session-create-panel').style.display = 'none';
+  document.getElementById('session-active-panel').style.display = 'block';
+  document.getElementById('bt-pulse').style.display = 'block';
+  document.getElementById('session-status-text').innerHTML =
+    '<span class="status-dot dot-active"></span>Session active — broadcasting via Bluetooth';
+
+  document.getElementById('stat-session').textContent = 'LIVE';
+
+  // Countdown 10 min
+  let secs = 600;
+  state.session.countdown = setInterval(() => {
+    secs--;
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    document.getElementById('session-countdown').textContent = m + ':' + s;
+    updateSessionTime();
+    // Poll for new students
+    const saved = sharedGet('attendance') || [];
+    if (saved.length !== state.attendance.length) {
+      state.attendance = saved;
+      renderAttendanceList();
+      updateStats();
+    }
+    if (secs <= 0) endSession();
+  }, 1000);
+
+  showToast('Session started! PIN: ' + code, 'success');
+}
+
+function restoreSession(savedSession) {
+  state.session = { active: true, code: savedSession.code, startTime: Date.now() };
+  document.getElementById('session-code-display').textContent = savedSession.code;
+  document.getElementById('session-create-panel').style.display = 'none';
+  document.getElementById('session-active-panel').style.display = 'block';
+  document.getElementById('bt-pulse').style.display = 'block';
+  document.getElementById('session-status-text').innerHTML =
+    '<span class="status-dot dot-active"></span>Session active — broadcasting via Bluetooth';
+  document.getElementById('stat-session').textContent = 'LIVE';
+  let secs = 600;
+  state.session.countdown = setInterval(() => {
+    secs--;
+    const m = String(Math.floor(secs / 60)).padStart(2, '0');
+    const s = String(secs % 60).padStart(2, '0');
+    document.getElementById('session-countdown').textContent = m + ':' + s;
+    updateSessionTime();
+    const saved = sharedGet('attendance') || [];
+    if (saved.length !== state.attendance.length) {
+      state.attendance = saved;
+      renderAttendanceList();
+      updateStats();
+    }
+    if (secs <= 0) endSession();
+  }, 1000);
+}
+
+function endSession() {
+  clearInterval(state.session.countdown);
+  state.session.active = false;
+  sharedSet('session', { active: false });
+  document.getElementById('session-create-panel').style.display = 'block';
+  document.getElementById('session-active-panel').style.display = 'none';
+  document.getElementById('bt-pulse').style.display = 'none';
+  document.getElementById('session-status-text').innerHTML =
+    '<span class="status-dot dot-inactive"></span>No active session';
+  document.getElementById('stat-session').textContent = 'ENDED';
+  showToast('Session ended. ' + state.attendance.length + ' students marked present.', 'success');
+}
+
+function updateStats() {
+  document.getElementById('stat-present').textContent = state.attendance.length;
+}
+
+function updateSessionTime() {
+  if (!state.session.startTime) return;
+  const elapsed = Math.floor((Date.now() - state.session.startTime) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = elapsed % 60;
+  document.getElementById('stat-time').textContent = m + 'm ' + s + 's';
+}
+
+function renderAttendanceList() {
+  const list = document.getElementById('student-list');
+  if (!state.attendance.length) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>No students have marked attendance yet.</p><p style="margin-top:8px">Start a session to begin.</p></div>`;
+    return;
+  }
+  list.innerHTML = state.attendance.map((s, i) => `
+    <div class="student-item">
+      <div class="avatar avatar-student" style="width:40px;height:40px;font-size:16px">${s.name[0].toUpperCase()}</div>
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-meta">Roll: ${s.rollNo || 'N/A'} &nbsp;·&nbsp; ${s.className || 'Class'}</div>
+      </div>
+      <div class="time-badge">🕐 ${s.time}</div>
+    </div>
+  `).join('');
+}
+
+function exportCSV() {
+  if (!state.attendance.length) { showToast('No attendance data to export', 'error'); return; }
+  const rows = ['Name,Roll No,Class,Time', ...state.attendance.map(s => `${s.name},${s.rollNo},${s.className},${s.time}`)];
+  const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'attendance_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  showToast('CSV exported!', 'success');
+}
+
+// ===== STUDENT =====
+function pinMove(el, nextId) {
+  el.value = el.value.replace(/\D/g,'');
+  if (el.value && nextId) document.getElementById(nextId).focus();
+}
+function pinBack(e, prevId) {
+  if (e.key === 'Backspace' && !e.target.value) document.getElementById(prevId).focus();
+}
+function pinDone() {
+  const pin = ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value).join('');
+  if (pin.length === 4) document.getElementById('pin4').blur();
+}
+
+function getPIN() {
+  return ['pin1','pin2','pin3','pin4'].map(id => document.getElementById(id).value).join('');
+}
+
+function clearPIN() {
+  ['pin1','pin2','pin3','pin4'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pin1').focus();
+}
+
+function scanBluetooth() {
+  const btWaves = document.getElementById('bt-waves');
+  const btStatus = document.getElementById('bt-status-student');
+  btStatus.innerHTML = '<span class="status-dot dot-active"></span><span style="font-size:13px">Scanning for classroom…</span>';
+  btWaves.style.display = 'flex';
+
+  setTimeout(() => {
+    const session = sharedGet('session');
+    if (session && session.active) {
+      btStatus.innerHTML = '<span class="status-dot dot-active"></span><span style="font-size:13px">📡 Connected to: ' + (session.className || 'Classroom') + '</span>';
+      showToast('Bluetooth connected to classroom! Enter the PIN.', 'success');
+    } else {
+      btWaves.style.display = 'none';
+      btStatus.innerHTML = '<span class="status-dot dot-inactive"></span><span style="font-size:13px">No session found nearby</span>';
+      showToast('No active session found. Ask your teacher to start one.', 'error');
+    }
+  }, 2000);
+}
+
+function markAttendance() {
+  const pin = getPIN();
+  if (pin.length < 4) { showToast('Please enter the full 4-digit PIN', 'error'); return; }
+
+  const session = sharedGet('session');
+  if (!session || !session.active) { showToast('No active session found. Ask your teacher.', 'error'); return; }
+  if (session.code !== pin) { showToast('Incorrect PIN. Try again.', 'error'); clearPIN(); return; }
+
+  // Check duplicate
+  const existing = sharedGet('attendance') || [];
+  const alreadyMarked = existing.find(s => s.rollNo === state.user.rollNo && s.name === state.user.name);
+  if (alreadyMarked) { showToast('You\'ve already marked attendance!', 'error'); return; }
+
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateStr = now.toLocaleDateString();
+
+  const record = {
+    name: state.user.name,
+    rollNo: state.user.rollNo,
+    className: session.className || 'Class',
+    time: timeStr,
+    date: dateStr
+  };
+
+  existing.push(record);
+  sharedSet('attendance', existing);
+
+  // Save to personal history
+  const histKey = 'history_' + state.user.rollNo;
+  const hist = sharedGet(histKey) || [];
+  hist.unshift({ ...record, subject: session.className });
+  sharedSet(histKey, hist);
+  state.myHistory = hist;
+
+  // Show success
+  document.getElementById('student-mark-panel').style.display = 'none';
+  const successPanel = document.getElementById('success-panel');
+  successPanel.style.display = 'flex';
+  document.getElementById('success-detail').textContent =
+    'Marked present for ' + (session.className || 'class') + ' at ' + timeStr;
+}
+
+function resetStudentPanel() {
+  document.getElementById('success-panel').style.display = 'none';
+  document.getElementById('student-mark-panel').style.display = 'block';
+  clearPIN();
+  renderHistory();
+  document.getElementById('bt-status-student').innerHTML =
+    '<span class="status-dot dot-inactive"></span><span style="font-size:13px">Not scanning</span>';
+  document.getElementById('bt-waves').style.display = 'none';
+}
+
+function renderHistory() {
+  const list = document.getElementById('history-list');
+  if (!state.myHistory.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">No attendance records yet.</div>';
+    return;
+  }
+  list.innerHTML = state.myHistory.slice(0, 10).map(h => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-weight:600;font-size:14px">${h.subject || h.className}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${h.date}</div>
+      </div>
+      <div class="chip chip-active">✓ Present • ${h.time}</div>
+    </div>
+  `).join('');
+}
+
+// ===== TOAST =====
+function showToast(msg, type = 'success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Start
+showScreen('landing');
+</script>
+</body>
+</html>
